@@ -1,26 +1,71 @@
 #!/bin/bash
+# Script to build one package (or all packages) for optware
+# Initially updates the local Git repro from GitHub 
+#
+# by Sebastian Ulmer
+#
+#--------------------------------------
+#  Initially: 
+#    Change the 'optware_folder' to point to a directory name you want to have. 
+#    Directory will be created. If changed from default, it needs to be changed in all scripts
+#  Usage: 
+#   ./autobuild_all.sh all   -> attempts to build all packages for all platforms
+#   ./autobuild_all.sh samba -> attempts to build the samba package for all platforms
+#--------------------------------------
+
+# Folder for optware
+optware_folder="optware/optware"
+
+#first get reference platform for platform list, actual platforms refer to this
+i="default"
+export OPTWARE_TARGET=$i
+# if local git repro folder already exists, assume optware repo is there and update
+# else clone the optware repro locally
+if [ -d ~/$optware_folder/$i ]; then
+   cd ~/$optware_folder/$i && git pull
+else
+ git clone https://github.com/Optware/Optware ~/$optware_folder/$i
+fi
+# local folders n onot need to be created, git will do this for you
+#[ -d ~/$optware_folder/$i ] || mkdir -p ~/$optware_folder/$i
+# create folder to store downloaded files
+[ -d ~/$optware_folder/downloads ] || mkdir -p ~/$optware_folder/downloads
+# delete any individual download folders if not a symlink
+# symlink plattform individual folders to main download folders to save storage
+[ ! -h ~/$optware_folder/$i/downloads ] && rm -fR ~/$optware_folder/$i/downloads && ln -s ~/$optware_folder/downloads ~/$optware_folder/$i/downloads
+cd ~/$optware_folder/$i
+
+
+# download some sources fron nslu server as auto download fails
+[ -e ~/$optware_folder/downloads/binutils-2.17.50.0.8.tar.bz2 ] || wget -O ~/$optware_folder/downloads/binutils-2.17.50.0.8.tar.bz2 http://ftp.osuosl.org/pub/nslu2/sources/binutils-2.17.50.0.8.tar.bz2
+[ -e ~/$optware_folder/downloads/binutils-2.15.94.0.2.tar.bz2 ] || wget -O ~/$optware_folder/downloads/binutils-2.15.94.0.2.tar.bz2 http://ftp.osuosl.org/pub/nslu2/sources/binutils-2.15.94.0.2.tar.bz2
+[ -e ~/$optware_folder/downloads/gdb-6.5.tar.bz2 ] || wget -O ~/$optware_folder/downloads/gdb-6.5.tar.bz2 http://ftp.osuosl.org/pub/nslu2/sources/gdb-6.5.tar.bz2
+[ -e ~/$optware_folder/downloads/binutils-2.17.tar.bz2 ] ||  wget -O ~/$optware_folder/downloads/binutils-2.17.tar.bz2 http://ftp.osuosl.org/pub/nslu2/sources/binutils-2.17.tar.bz2
+#missing source for dns323, conversion to tar.bz2 needed
+[ -e ~/$optware_folder/downloads/binutils-2.14.90.0.7.tar.bz2 ] ||wget -O ~/$optware_folder/downloads/binutils-2.14.90.0.7.tar.gz ftp://ftp.kernel.org/pub/linux/devel/binutils/binutils-2.14.90.0.7.tar.gz && cd ~/$optware_folder/downloads/ && gunzip binutils-2.14.90.0.7.tar.gz && bzip2 binutils-2.14.90.0.7.tar
+[ -e ~/$optware_folder/downloads/gcc-3.4.5.tar.bz2 ] || wget -O ~/$optware_folder/downloads/gcc-3.4.5.tar.bz2 http://ftp.osuosl.org/pub/nslu2/sources/gcc-3.4.5.tar.bz2
+[ -e ~/$optware_folder/downloads/pxaregs-1.14.tar.bz ] || wget -O ~/$optware_folder/downloads/pxaregs-1.14.tar.bz http://ftp.osuosl.org/pub/nslu2/sources/pxaregs-1.14.tar.bz
 
 export OPTWARE_TARGET="nslu2"
 
 #TARGETS="ddwrt ds101 nslu2 ds101 ds101g syno-x07 openwrt-brcm24 sheevaplug wdtv slugos6be syno1142ppc824x "
 i=$1
-svn co http://svn.nslu2-linux.org/svnroot/optware/trunk ~/optware/default
 
 #for i in $TARGETS
 #do
 {
    export OPTWARE_TARGET=$i
-   [ -d ~/optware/builddir/$i ] || mkdir -p ~/optware/builddir/$i
-   [ ! -h ~/optware/builddir/$i/downloads ] && rm -fR ~/optware/builddir/$i/downloads && ln -s ~/optware/downloads ~/optware/builddir/$i/downloads
-   cd ~/optware/builddir/$i
+   [ -d ~/$optware_folder/builddir/$i ] || mkdir -p ~/$optware_folder/builddir/$i
+   [ ! -h ~/$optware_folder/builddir/$i/downloads ] && rm -fR ~/$optware_folder/builddir/$i/downloads && ln -s ~/$optware_folder/downloads ~/$optware_folder/builddir/$i/downloads
+   cd ~/$optware_folder/builddir/$i
    for j in make platforms scripts sources Makefile AUTHORS README
    do
-      [ ! -h ~/optware/builddir/$i/$j ] && ln -s ~/optware/default/$j ~/optware/builddir/$i/$j
+      [ ! -h ~/$optware_folder/builddir/$i/$j ] && ln -s ~/$optware_folder/default/$j ~/$optware_folder/builddir/$i/$j
    done
-   #svn co https://svn.nslu2-linux.org/svnroot/optware/trunk ~/optware/$i
+   #svn co https://svn.nslu2-linux.org/svnroot/$optware_folder/trunk ~/$optware_folder/$i
    make $2
    make $2-ipk
    make $2-check
-} &> ~/optware/make_$i.log
+} &> ~/$optware_folder/make_$i.log
 #done
 
